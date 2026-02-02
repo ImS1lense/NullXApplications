@@ -1,13 +1,12 @@
 
-import React, { useState } from 'react';
-import { InputOnly, TextAreaOnly } from './components/InputField';
-import { SectionWrapper } from './components/SectionWrapper';
-import { QuizField } from './components/QuizField';
-import { ProgressBar } from './components/ProgressBar';
-import { CustomModal } from './components/CustomModal';
-import { VisualCaptcha } from './components/VisualCaptcha';
-import { FormData } from './types';
-import { sendNotification } from './services/notificationService';
+import React, { useState, useEffect } from 'react';
+import { InputOnly, TextAreaOnly } from './components/InputField.tsx';
+import { SectionWrapper } from './components/SectionWrapper.tsx';
+import { QuizField } from './components/QuizField.tsx';
+import { ProgressBar } from './components/ProgressBar.tsx';
+import { CustomModal } from './components/CustomModal.tsx';
+import { FormData } from './types.ts';
+import { sendNotification } from './services/notificationService.ts';
 
 const initialFormState: FormData = {
   nickname: '',
@@ -39,9 +38,23 @@ const App: React.FC = () => {
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '' });
   
   // Captcha state
-  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [captcha, setCaptcha] = useState({ q: '', a: 0 });
+  const [userCaptcha, setUserCaptcha] = useState('');
 
   const totalSteps = 5;
+
+  useEffect(() => {
+    if (currentStep === 5) {
+      generateCaptcha();
+    }
+  }, [currentStep]);
+
+  const generateCaptcha = () => {
+    const n1 = Math.floor(Math.random() * 10) + 1;
+    const n2 = Math.floor(Math.random() * 10) + 1;
+    setCaptcha({ q: `${n1} + ${n2}`, a: n1 + n2 });
+    setUserCaptcha('');
+  };
 
   const handleInputChange = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
@@ -103,7 +116,7 @@ const App: React.FC = () => {
           formData.expectations.trim() !== '' && 
           formData.duties.trim() !== '' && 
           formData.deanonPunishment !== '' &&
-          isCaptchaVerified
+          parseInt(userCaptcha) === captcha.a
         );
       default:
         return true;
@@ -131,8 +144,8 @@ const App: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep()) {
-      if (!isCaptchaVerified) {
-         setModal({ isOpen: true, title: "Ошибка", message: "Пожалуйста, подтвердите, что вы не робот." });
+      if (parseInt(userCaptcha) !== captcha.a) {
+         setModal({ isOpen: true, title: "Ошибка", message: "Неверно решена капча." });
       } else {
          setModal({ isOpen: true, title: "Ошибка", message: "Анкета заполнена не полностью. Проверьте все вопросы." });
       }
@@ -152,7 +165,7 @@ const App: React.FC = () => {
   const handleReset = () => {
     setFormData(initialFormState);
     setCurrentStep(1);
-    setIsCaptchaVerified(false);
+    setUserCaptcha('');
     setIsSubmitted(false);
     setView('landing');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -450,9 +463,20 @@ const App: React.FC = () => {
                 ]}
               />
 
-              <div className="mt-8 flex flex-col items-center gap-4">
-                <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Подтверждение безопасности</p>
-                <VisualCaptcha onVerify={(val) => setIsCaptchaVerified(val)} />
+              <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-6 mt-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+                <div className="flex items-center gap-4">
+                   <div className="p-3 bg-[#111] rounded-xl border border-[#b000ff]/20 text-[#b000ff] font-brand font-black text-xl select-none">
+                     {captcha.q} = ?
+                   </div>
+                   <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold max-w-[120px]">Решите пример для подтверждения</p>
+                </div>
+                <div className="w-full md:w-32">
+                   <InputOnly 
+                    placeholder="Ответ" 
+                    value={userCaptcha} 
+                    onChange={(e) => setUserCaptcha(e.target.value.replace(/[^0-9]/g, ''))} 
+                   />
+                </div>
               </div>
             </div>
           )}
@@ -479,9 +503,9 @@ const App: React.FC = () => {
             ) : (
               <button
                 type="submit"
-                disabled={isSubmitting || !isCaptchaVerified}
+                disabled={isSubmitting || parseInt(userCaptcha) !== captcha.a}
                 className={`flex-[2] py-4 rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg ${
-                  isSubmitting || !isCaptchaVerified 
+                  isSubmitting || parseInt(userCaptcha) !== captcha.a 
                   ? 'bg-gray-800 opacity-50 cursor-not-allowed border border-gray-700' 
                   : 'bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 shadow-[0_0_30px_rgba(176,0,255,0.45)]'
                 }`}
