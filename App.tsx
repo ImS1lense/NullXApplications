@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
-import { InputOnly, TextAreaOnly } from './components/InputField';
-import { SectionWrapper } from './components/SectionWrapper';
-import { QuizField } from './components/QuizField';
-import { ProgressBar } from './components/ProgressBar';
-import { CustomModal } from './components/CustomModal';
-import { VisualCaptcha } from './components/VisualCaptcha';
-import { FormData } from './types';
-import { sendNotification } from './services/notificationService';
+import { InputOnly, TextAreaOnly } from './components/InputField.tsx';
+import { SectionWrapper } from './components/SectionWrapper.tsx';
+import { QuizField } from './components/QuizField.tsx';
+import { ProgressBar } from './components/ProgressBar.tsx';
+import { CustomModal } from './components/CustomModal.tsx';
+import { VisualCaptcha } from './components/VisualCaptcha.tsx';
+import { FormData } from './types.ts';
+import { sendNotification } from './services/notificationService.ts';
 
 const initialFormState: FormData = {
   nickname: '',
