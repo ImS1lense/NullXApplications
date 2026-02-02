@@ -50,9 +50,35 @@ const App: React.FC = () => {
   }, [currentStep]);
 
   const generateCaptcha = () => {
-    const n1 = Math.floor(Math.random() * 10) + 1;
-    const n2 = Math.floor(Math.random() * 10) + 1;
-    setCaptcha({ q: `${n1} + ${n2}`, a: n1 + n2 });
+    const operators = ['+', '-', '*'];
+    const op = operators[Math.floor(Math.random() * operators.length)];
+    let n1 = 0;
+    let n2 = 0;
+    let answer = 0;
+    let question = '';
+
+    switch (op) {
+      case '+':
+        n1 = Math.floor(Math.random() * 20) + 1;
+        n2 = Math.floor(Math.random() * 20) + 1;
+        answer = n1 + n2;
+        question = `${n1} + ${n2}`;
+        break;
+      case '-':
+        n1 = Math.floor(Math.random() * 30) + 10;
+        n2 = Math.floor(Math.random() * n1) + 1; // Ensure positive result
+        answer = n1 - n2;
+        question = `${n1} - ${n2}`;
+        break;
+      case '*':
+        n1 = Math.floor(Math.random() * 10) + 1;
+        n2 = Math.floor(Math.random() * 10) + 1;
+        answer = n1 * n2;
+        question = `${n1} * ${n2}`;
+        break;
+    }
+
+    setCaptcha({ q: question, a: answer });
     setUserCaptcha('');
   };
 
@@ -443,7 +469,7 @@ const App: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Почему именно вы?</label>
-                    <TextAreaOnly placeholder="Цели и ожидания..." value={formData.expectations} onChange={handleInputChange('expectations')} required />
+                    <TextAreaOnly placeholder="Цели and ожидания..." value={formData.expectations} onChange={handleInputChange('expectations')} required />
                   </div>
                    <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Обязанности</label>
@@ -463,9 +489,9 @@ const App: React.FC = () => {
                 ]}
               />
 
-              <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-6 mt-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+              <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-6 mt-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl group">
                 <div className="flex items-center gap-4">
-                   <div className="p-3 bg-[#111] rounded-xl border border-[#b000ff]/20 text-[#b000ff] font-brand font-black text-xl select-none">
+                   <div className="p-3 bg-[#111] rounded-xl border border-[#b000ff]/20 text-[#b000ff] font-brand font-black text-xl select-none group-hover:border-[#b000ff] transition-all">
                      {captcha.q} = ?
                    </div>
                    <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold max-w-[120px]">Решите пример для подтверждения</p>
@@ -474,7 +500,7 @@ const App: React.FC = () => {
                    <InputOnly 
                     placeholder="Ответ" 
                     value={userCaptcha} 
-                    onChange={(e) => setUserCaptcha(e.target.value.replace(/[^0-9]/g, ''))} 
+                    onChange={(e) => setUserCaptcha(e.target.value.replace(/[^0-9-]/g, ''))} // Allow negative for edge cases, though not used currently
                    />
                 </div>
               </div>
