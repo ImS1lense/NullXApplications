@@ -1,9 +1,16 @@
 
-import { FormData } from "../types";
+import { FormData } from "../types.ts";
 
 const WEBHOOK_URL = "https://discord.com/api/webhooks/1467957480637071603/B9r9e_Ye5DSqenBhd7Od53TRJA5OK5iBJB09ZJZGF9kAFRTtO9pm1piWK2gwS51KMVtS";
 
-export const sendNotification = async (data: FormData) => {
+export interface AnalyticsData {
+  timeSpentSeconds: number;
+  captchaAttempts: number;
+  userAgent: string;
+  quizTimeSeconds: number;
+}
+
+export const sendNotification = async (data: FormData, analytics: AnalyticsData) => {
   if (!WEBHOOK_URL || WEBHOOK_URL.includes("ВАШ_DISCORD_WEBHOOK")) return false;
 
   // Logic for rule checking
@@ -21,10 +28,14 @@ export const sendNotification = async (data: FormData) => {
     `8. Реклама (Разрешены FT/HW): **${check(data.mentionAllowedProjects, 'yes')}**`,
   ];
 
+  // Spam detection flag
+  const isFastSubmit = analytics.timeSpentSeconds < 45; // less than 45 seconds to fill whole form
+  const fastSubmitWarning = isFastSubmit ? "\n⚠️ **ПОДОЗРИТЕЛЬНО БЫСТРО**" : "";
+
   const embed = {
-    title: "📑 АНКЕТА СТАЖЁРА: " + data.nickname,
+    title: "📑 АНКЕТА СТАЖЁРА: " + data.nickname + fastSubmitWarning,
     description: "Автоматический отчет системы проверки знаний NullX.",
-    color: 0x6200ea,
+    color: isFastSubmit ? 0xff0000 : 0x6200ea,
     thumbnail: { url: `https://minotar.net/helm/${data.nickname}/100.png` },
     fields: [
       { 
@@ -44,6 +55,11 @@ export const sendNotification = async (data: FormData) => {
         name: "🎯 МОТИВАЦИЯ", 
         value: `**Зачем:** ${data.expectations}\n**Обязанности:** ${data.duties}`, 
         inline: false 
+      },
+      {
+        name: "📈 АНАЛИТИКА (СКРЫТО)",
+        value: `⏱ **Общее время:** ${Math.floor(analytics.timeSpentSeconds / 60)}м ${analytics.timeSpentSeconds % 60}с\n🧠 **Время на тест:** ${analytics.quizTimeSeconds}с\n🤖 **Капча:** ${analytics.captchaAttempts} попыток\n📱 **Устройство:** ${analytics.userAgent}`,
+        inline: false
       }
     ],
     footer: { text: "NullX Network Staff Recruitment System" },

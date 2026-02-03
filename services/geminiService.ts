@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { FormData } from "../types";
+import { FormData } from "../types.ts";
 
 export const analyzeApplication = async (data: FormData) => {
   // Use process.env.API_KEY directly as per guidelines

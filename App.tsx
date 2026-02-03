@@ -1,12 +1,21 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { InputOnly, TextAreaOnly } from './components/InputField.tsx';
 import { SectionWrapper } from './components/SectionWrapper.tsx';
 import { QuizField } from './components/QuizField.tsx';
 import { ProgressBar } from './components/ProgressBar.tsx';
 import { CustomModal } from './components/CustomModal.tsx';
+import { GoogleCaptcha } from './components/GoogleCaptcha.tsx';
+import { ParticleBackground } from './components/ParticleBackground.tsx';
 import { FormData } from './types.ts';
 import { sendNotification } from './services/notificationService.ts';
+
+// Authentic Minecraft SFX via jsDelivr CDN
+const SFX = {
+  click: 'https://cdn.jsdelivr.net/gh/Rebane2001/minecraft-assets@master/assets/minecraft/sounds/ui/button/click.ogg',
+  success: 'https://cdn.jsdelivr.net/gh/Rebane2001/minecraft-assets@master/assets/minecraft/sounds/random/orb.ogg',
+  error: 'https://cdn.jsdelivr.net/gh/Rebane2001/minecraft-assets@master/assets/minecraft/sounds/entity/villager/no1.ogg'
+};
 
 const initialFormState: FormData = {
   nickname: '',
@@ -30,56 +39,51 @@ const initialFormState: FormData = {
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'landing' | 'form'>('landing');
+  const [view, setView] = useState<'landing' | 'form' | 'blocked'>('landing');
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '' });
   
-  // Captcha state
-  const [captcha, setCaptcha] = useState({ q: '', a: 0 });
-  const [userCaptcha, setUserCaptcha] = useState('');
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [captchaAttempts, setCaptchaAttempts] = useState(0);
+
+  // Analytics State
+  const startTimeRef = useRef<number>(Date.now());
+  const quizStartTimeRef = useRef<number>(0);
+  const [quizTimeElapsed, setQuizTimeElapsed] = useState(0);
 
   const totalSteps = 5;
 
+  // Rate Limiting Check
   useEffect(() => {
-    if (currentStep === 5) {
-      generateCaptcha();
+    const lastSubmission = localStorage.getItem('nullx_last_submission');
+    if (lastSubmission) {
+      const hoursSince = (Date.now() - parseInt(lastSubmission)) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        setView('blocked');
+      }
     }
+  }, []);
+
+  // Quiz Timer Logic
+  useEffect(() => {
+    let interval: number;
+    if (currentStep === 3 || currentStep === 4) {
+      if (quizStartTimeRef.current === 0) quizStartTimeRef.current = Date.now();
+      
+      interval = window.setInterval(() => {
+        setQuizTimeElapsed(Math.floor((Date.now() - quizStartTimeRef.current) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
   }, [currentStep]);
 
-  const generateCaptcha = () => {
-    const operators = ['+', '-', '*'];
-    const op = operators[Math.floor(Math.random() * operators.length)];
-    let n1 = 0;
-    let n2 = 0;
-    let answer = 0;
-    let question = '';
-
-    switch (op) {
-      case '+':
-        n1 = Math.floor(Math.random() * 20) + 1;
-        n2 = Math.floor(Math.random() * 20) + 1;
-        answer = n1 + n2;
-        question = `${n1} + ${n2}`;
-        break;
-      case '-':
-        n1 = Math.floor(Math.random() * 30) + 10;
-        n2 = Math.floor(Math.random() * n1) + 1; // Ensure positive result
-        answer = n1 - n2;
-        question = `${n1} - ${n2}`;
-        break;
-      case '*':
-        n1 = Math.floor(Math.random() * 10) + 1;
-        n2 = Math.floor(Math.random() * 10) + 1;
-        answer = n1 * n2;
-        question = `${n1} * ${n2}`;
-        break;
-    }
-
-    setCaptcha({ q: question, a: answer });
-    setUserCaptcha('');
+  const playSfx = (type: 'click' | 'success' | 'error') => {
+    const audio = new Audio(SFX[type]);
+    audio.volume = 0.5; // Slightly louder for authentic sounds
+    audio.play().catch(() => {}); // Catch error if user hasn't interacted yet
   };
 
   const handleInputChange = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -142,7 +146,7 @@ const App: React.FC = () => {
           formData.expectations.trim() !== '' && 
           formData.duties.trim() !== '' && 
           formData.deanonPunishment !== '' &&
-          parseInt(userCaptcha) === captcha.a
+          isCaptchaVerified
         );
       default:
         return true;
@@ -150,19 +154,23 @@ const App: React.FC = () => {
   };
 
   const nextStep = () => {
+    playSfx('click');
     if (validateStep()) {
+      playSfx('success');
       setCurrentStep(prev => Math.min(prev + 1, totalSteps));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      let errorMsg = "Пожалуйста, ответьте на все вопросы на текущем шаге, прежде чем продолжить.";
+      playSfx('error');
+      let errorMsg = "Пожалуйста, ответьте на все вопросы на текущем шаге.";
       if (currentStep === 2 && formData.activeTime.length < 11 && formData.activeTime.length > 0) {
-        errorMsg = "Неверный формат времени. Используйте ЧЧ:ММ-ЧЧ:ММ (напр. 22:00-00:30)";
+        errorMsg = "Неверный формат времени. Используйте ЧЧ:ММ-ЧЧ:ММ";
       }
       setModal({ isOpen: true, title: "Внимание", message: errorMsg });
     }
   };
 
   const prevStep = () => {
+    playSfx('click');
     setCurrentStep(prev => Math.max(prev - 1, 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -170,56 +178,109 @@ const App: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep()) {
-      if (parseInt(userCaptcha) !== captcha.a) {
-         setModal({ isOpen: true, title: "Ошибка", message: "Неверно решена капча." });
+      playSfx('error');
+      if (!isCaptchaVerified) {
+         setModal({ isOpen: true, title: "Ошибка", message: "Пожалуйста, подтвердите, что вы не робот." });
       } else {
-         setModal({ isOpen: true, title: "Ошибка", message: "Анкета заполнена не полностью. Проверьте все вопросы." });
+         setModal({ isOpen: true, title: "Ошибка", message: "Анкета заполнена не полностью." });
       }
       return;
     }
 
     setIsSubmitting(true);
-    const success = await sendNotification(formData);
+    
+    // Gather Analytics
+    const analytics = {
+      timeSpentSeconds: Math.floor((Date.now() - startTimeRef.current) / 1000),
+      captchaAttempts: captchaAttempts,
+      userAgent: navigator.userAgent,
+      quizTimeSeconds: quizTimeElapsed
+    };
+
+    const success = await sendNotification(formData, analytics);
+    
     if (success) {
+      playSfx('success');
+      localStorage.setItem('nullx_last_submission', Date.now().toString()); // Set Rate Limit
       setIsSubmitted(true);
     } else {
-      setModal({ isOpen: true, title: "Сбой отправки", message: "Не удалось отправить заявку. Пожалуйста, попробуйте еще раз." });
+      playSfx('error');
+      setModal({ isOpen: true, title: "Сбой отправки", message: "Не удалось отправить заявку. Попробуйте еще раз." });
     }
     setIsSubmitting(false);
   };
 
   const handleReset = () => {
+    playSfx('click');
+    // Don't reset localStorage here, as rate limit persists
     setFormData(initialFormState);
     setCurrentStep(1);
-    setUserCaptcha('');
+    setIsCaptchaVerified(false);
     setIsSubmitted(false);
+    setCaptchaAttempts(0);
+    startTimeRef.current = Date.now();
+    quizStartTimeRef.current = 0;
+    setQuizTimeElapsed(0);
     setView('landing');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const startApplication = () => {
-    setView('form');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Blocked View (Rate Limit)
+  if (view === 'blocked') {
+     return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505] overlay-animate-show relative overflow-hidden">
+        <ParticleBackground />
+        <div className="max-w-md w-full bg-[#0a0a0a] border border-red-900/50 rounded-2xl p-10 text-center shadow-[0_0_60px_rgba(255,0,0,0.15)] z-10">
+          <div className="w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-brand font-bold mb-4 text-white uppercase">Доступ ограничен</h2>
+          <p className="text-gray-400 mb-6">
+            Вы уже отправляли заявку за последние 24 часа. Чтобы избежать спама, мы временно ограничили отправку новых форм.
+          </p>
+          <div className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">
+            Попробуйте позже
+          </div>
+        </div>
+      </div>
+     );
+  }
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505] overlay-animate-show">
-        <div className="max-w-md w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-10 text-center shadow-[0_0_60px_rgba(176,0,255,0.25)] modal-animate-show">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#6200ea] to-[#b000ff] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(176,0,255,0.4)]">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505] overlay-animate-show relative overflow-hidden">
+        <ParticleBackground />
+        <div className="max-w-md w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-10 text-center shadow-[0_0_60px_rgba(176,0,255,0.25)] modal-animate-show relative overflow-hidden z-10">
+          {/* Decorative light effect */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-[#6200ea] opacity-20 blur-[60px] pointer-events-none"></div>
+
+          <div className="relative z-10">
+            <div className="relative mx-auto mb-8 w-24 h-24 flex items-center justify-center">
+              {/* Ping effect for impact */}
+              <div className="absolute inset-0 bg-[#b000ff] rounded-full animate-ping opacity-20 duration-1000"></div>
+              {/* Main Icon */}
+              <div className="relative w-24 h-24 bg-gradient-to-br from-[#6200ea] to-[#b000ff] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(176,0,255,0.5)] animate-success-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-brand font-bold mb-4 tracking-tight text-white uppercase animate-fade-up opacity-0" style={{animationDelay: '0.2s'}}>Успешно</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed font-medium animate-fade-up opacity-0" style={{animationDelay: '0.3s'}}>
+              Ваша заявка принята и отправлена администрации NullX.
+            </p>
+            <button 
+              type="button"
+              onClick={handleReset} 
+              className="w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 active:scale-95 transition-all shadow-lg text-white animate-fade-up opacity-0"
+              style={{animationDelay: '0.4s'}}
+            >
+              Закрыть
+            </button>
           </div>
-          <h2 className="text-3xl font-brand font-bold mb-4 tracking-tight text-white uppercase">Успешно</h2>
-          <p className="text-gray-400 mb-8 leading-relaxed font-medium">Ваша заявка принята и отправлена администрации NullX. Спасибо за проявленный интерес!</p>
-          <button 
-            type="button"
-            onClick={handleReset} 
-            className="w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 active:scale-95 transition-all shadow-[0_0_25px_rgba(98,0,234,0.35)] text-white"
-          >
-            Закрыть
-          </button>
         </div>
       </div>
     );
@@ -227,101 +288,100 @@ const App: React.FC = () => {
 
   if (view === 'landing') {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start py-10 px-4 overlay-animate-show">
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start py-10 px-4 overlay-animate-show overflow-hidden relative">
+        <ParticleBackground />
+        
+        {/* Gradients */}
         <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.06] blur-[140px] pointer-events-none"></div>
         <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.06] blur-[140px] pointer-events-none"></div>
 
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-[#111] border border-[#1f1f1f] rounded-full mb-12 shadow-lg animate-float">
+        <div className="flex items-center gap-2 px-6 py-2 bg-[#111] border border-[#1f1f1f] rounded-full mb-16 shadow-2xl animate-float z-10">
           <svg className="h-3.5 w-3.5 text-[#b000ff]" fill="currentColor" viewBox="0 0 20 20">
-             <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-             <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
+              <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
+              <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
           </svg>
-          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">Официальный портал набора персонала</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Official Staff Portal</span>
         </div>
 
-        <div className="text-center max-w-4xl mb-16 px-4">
-          <h1 className="text-6xl md:text-[90px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase">
-            Null<span className="text-[#b000ff] ml-3">X</span><br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff]">Staff</span>
+        <div className="text-center max-w-4xl mb-20 px-4 z-10 flex flex-col items-center">
+          <h1 className="text-7xl md:text-[110px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase flex flex-col items-center text-white">
+            <span>Null<span className="text-[#b000ff] ml-3">X</span></span>
+            <span className="text-3xl md:text-[40px] text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] mt-4 font-bold tracking-[0.4em] border-b-2 border-[#b000ff]/30 pb-2">STAFF TEAM</span>
           </h1>
-          <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed mb-10">
-            Помогаем игрокам крупнейшего Minecraft проекта решать технические вопросы,
-            модерировать игровой процесс и создавать лучшую атмосферу для игры.
-            Присоединяйся к команде профессионалов!
+          
+          <p className="text-gray-400 text-sm md:text-base max-w-xl mx-auto leading-relaxed mb-10 opacity-80 mt-8">
+            Мы ищем амбициозных игроков, готовых следить за порядком и помогать сообществу NullX расти. Твой путь в команду начинается здесь.
           </p>
           
           <button 
-            onClick={startApplication}
-            className="group relative inline-flex items-center justify-center px-12 py-6 bg-[#5865F2] hover:bg-[#4752c4] rounded-xl text-white font-bold uppercase tracking-wider text-xl md:text-2xl transition-all active:scale-95 shadow-[0_15px_50px_rgba(88,101,242,0.4)]"
+            onClick={() => { playSfx('click'); setView('form'); }}
+            className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)]"
           >
             Подать заявку
           </button>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-12 md:gap-24 mb-24 max-w-5xl">
+        <div className="flex flex-wrap justify-center gap-12 md:gap-32 mb-24 max-w-5xl opacity-80 z-10">
           <div className="text-center group">
-            <h3 className="text-5xl font-brand font-extrabold text-white mb-2 group-hover:text-[#6200ea] transition-colors">7</h3>
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Сотрудников</p>
+            <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">7</h3>
+            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Модераторов</p>
           </div>
           <div className="text-center group">
-            <h3 className="text-5xl font-brand font-extrabold text-white mb-2 group-hover:text-[#ff0095] transition-colors">24/7</h3>
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Режим работы</p>
+            <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">24/7</h3>
+            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Активность</p>
           </div>
           <div className="text-center group">
-            <h3 className="text-5xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">1 000+</h3>
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Игроков проекта</p>
+            <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">1k+</h3>
+            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Игроков</p>
           </div>
         </div>
 
-        <div className="w-full max-w-6xl mb-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-brand font-extrabold uppercase mb-4 tracking-tight">О работе персонала</h2>
-            <p className="text-gray-500 tracking-wider text-sm font-medium">Мы — команда профессионалов, которая ежедневно делает сервер лучше</p>
+        <div className="w-full max-w-6xl mb-20 z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-brand font-extrabold uppercase mb-4 tracking-tight text-white">О работе персонала</h2>
+              <p className="text-gray-500 tracking-wider text-sm font-medium">Мы — команда профессионалов, которая ежедневно делает сервер лучше</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <FeatureCard 
+                icon={<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />}
+                title="Быстрые ответы"
+                desc="Отвечаем на обращения в кратчайшие сроки и помогаем новичкам освоиться."
+              />
+              <FeatureCard 
+                icon={<path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />}
+                title="Опытная команда"
+                desc="Квалифицированные специалисты с глубоким знанием правил и механик проекта."
+              />
+              <FeatureCard 
+                icon={<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />}
+                title="Помощь 24/7"
+                desc="Работаем круглосуточно для вашего комфорта и стабильности игрового мира."
+              />
+              <FeatureCard 
+                icon={<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />}
+                title="Справедливость"
+                desc="Объективный подход к каждой ситуации и строгое соблюдение регламента сервера."
+              />
+            </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FeatureCard 
-              icon={<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />}
-              title="Быстрые ответы"
-              desc="Отвечаем на обращения в кратчайшие сроки и помогаем новичкам освоиться."
-            />
-            <FeatureCard 
-              icon={<path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />}
-              title="Опытная команда"
-              desc="Квалифицированные специалисты с глубоким знанием правил и механик проекта."
-            />
-            <FeatureCard 
-              icon={<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />}
-              title="Помощь 24/7"
-              desc="Работаем круглосуточно для вашего комфорта и стабильности игрового мира."
-            />
-            <FeatureCard 
-              icon={<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />}
-              title="Справедливость"
-              desc="Объективный подход к каждой ситуации и строгое соблюдение регламента сервера."
-            />
-          </div>
-        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen py-12 px-4 md:px-6 relative overflow-hidden flex flex-col items-center bg-[#050505] overlay-animate-show">
-      <CustomModal 
-        isOpen={modal.isOpen} 
-        onClose={() => setModal({ ...modal, isOpen: false })} 
-        title={modal.title} 
-        message={modal.message} 
-      />
-
-      <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.04] blur-[140px] pointer-events-none"></div>
-      <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.04] blur-[140px] pointer-events-none"></div>
+      <CustomModal isOpen={modal.isOpen} onClose={() => setModal({ ...modal, isOpen: false })} title={modal.title} message={modal.message} />
+      
+      {/* Backgrounds */}
+      <ParticleBackground />
+      <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.03] blur-[140px] pointer-events-none"></div>
+      <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.03] blur-[140px] pointer-events-none"></div>
 
       <div className="max-w-2xl w-full relative z-10">
         <header className="text-center mb-10 animate-float flex flex-col items-center">
           <button 
-            onClick={() => setView('landing')}
+            onClick={() => { playSfx('click'); setView('landing'); }}
             className="mb-6 flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
           >
             <svg className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -330,17 +390,29 @@ const App: React.FC = () => {
             <span className="text-[10px] uppercase font-bold tracking-widest">Вернуться на главную</span>
           </button>
 
-          <h1 className="text-6xl md:text-7xl font-brand font-extrabold tracking-tighter mb-2 select-none uppercase">
+          <h1 className="text-6xl md:text-7xl font-brand font-extrabold tracking-tighter mb-2 select-none uppercase text-white">
             Null<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] ml-3">X</span>
           </h1>
           <div className="flex items-center justify-center gap-3 opacity-60">
-             <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-white"></span>
-             <p className="text-white uppercase tracking-[0.3em] text-[10px] font-bold">Applications For Internships</p>
-             <span className="h-[1px] w-12 bg-gradient-to-l from-transparent to-white"></span>
+             <span className="h-[1px] w-12 bg-gray-600"></span>
+             <p className="text-gray-400 uppercase tracking-[0.3em] text-[10px] font-bold">Staff Recruitment</p>
+             <span className="h-[1px] w-12 bg-gray-600"></span>
           </div>
         </header>
 
         <ProgressBar currentStep={currentStep} totalSteps={totalSteps} />
+
+        {/* Quiz Timer Display */}
+        {(currentStep === 3 || currentStep === 4) && (
+          <div className="fixed top-4 right-4 md:absolute md:top-0 md:right-[-80px] z-50 animate-in fade-in duration-500">
+            <div className="bg-[#0a0a0a] border border-[#b000ff]/30 rounded-lg p-3 text-center shadow-lg">
+              <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-1">Таймер</div>
+              <div className="text-xl font-brand font-bold text-white tabular-nums">
+                {Math.floor(quizTimeElapsed / 60).toString().padStart(2, '0')}:{(quizTimeElapsed % 60).toString().padStart(2, '0')}
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="transition-opacity duration-1000">
           
@@ -350,7 +422,13 @@ const App: React.FC = () => {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Никнейм в Minecraft</label>
-                    <InputOnly placeholder="Ваш ник..." value={formData.nickname} onChange={handleInputChange('nickname')} required />
+                    <InputOnly 
+                      placeholder="Ваш ник..." 
+                      value={formData.nickname} 
+                      onChange={handleInputChange('nickname')} 
+                      required 
+                      showSkinPreview={true}
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Discord</label>
@@ -385,7 +463,14 @@ const App: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Расскажите о себе</label>
-                    <TextAreaOnly placeholder="Ваши увлечения, черты характера..." value={formData.about} onChange={handleInputChange('about')} required />
+                    <TextAreaOnly 
+                      placeholder="Ваши увлечения, черты характера..." 
+                      value={formData.about} 
+                      onChange={handleInputChange('about')} 
+                      required 
+                      maxLength={500}
+                      preventPaste={true} 
+                    />
                   </div>
                 </div>
               </SectionWrapper>
@@ -469,7 +554,7 @@ const App: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Почему именно вы?</label>
-                    <TextAreaOnly placeholder="Цели and ожидания..." value={formData.expectations} onChange={handleInputChange('expectations')} required />
+                    <TextAreaOnly placeholder="Цели и ожидания..." value={formData.expectations} onChange={handleInputChange('expectations')} required />
                   </div>
                    <div>
                     <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 ml-1 font-bold">Обязанности</label>
@@ -489,20 +574,11 @@ const App: React.FC = () => {
                 ]}
               />
 
-              <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-6 mt-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl group">
-                <div className="flex items-center gap-4">
-                   <div className="p-3 bg-[#111] rounded-xl border border-[#b000ff]/20 text-[#b000ff] font-brand font-black text-xl select-none group-hover:border-[#b000ff] transition-all">
-                     {captcha.q} = ?
-                   </div>
-                   <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold max-w-[120px]">Решите пример для подтверждения</p>
-                </div>
-                <div className="w-full md:w-32">
-                   <InputOnly 
-                    placeholder="Ответ" 
-                    value={userCaptcha} 
-                    onChange={(e) => setUserCaptcha(e.target.value.replace(/[^0-9-]/g, ''))} // Allow negative for edge cases, though not used currently
-                   />
-                </div>
+              <div className="mt-8 flex flex-col items-center gap-4">
+                <GoogleCaptcha onVerify={(val) => {
+                  setIsCaptchaVerified(val);
+                  setCaptchaAttempts(prev => prev + 1);
+                }} />
               </div>
             </div>
           )}
@@ -522,16 +598,16 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-[2] py-4 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] hover:brightness-110 shadow-[0_10px_30px_rgba(98,0,234,0.3)] transition-all active:scale-95"
+                className="flex-[2] py-4 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] hover:brightness-110 shadow-[0_10px_30px_rgba(176,0,255,0.3)] transition-all active:scale-95"
               >
                 Далее
               </button>
             ) : (
               <button
                 type="submit"
-                disabled={isSubmitting || parseInt(userCaptcha) !== captcha.a}
+                disabled={isSubmitting || !isCaptchaVerified}
                 className={`flex-[2] py-4 rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg ${
-                  isSubmitting || parseInt(userCaptcha) !== captcha.a 
+                  isSubmitting || !isCaptchaVerified 
                   ? 'bg-gray-800 opacity-50 cursor-not-allowed border border-gray-700' 
                   : 'bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 shadow-[0_0_30px_rgba(176,0,255,0.45)]'
                 }`}
@@ -553,8 +629,8 @@ interface FeatureCardProps {
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, desc }) => (
-  <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-8 hover:border-[#b000ff]/30 transition-all duration-300 group">
-    <div className="w-12 h-12 bg-[#111] border border-[#1f1f1f] rounded-xl flex items-center justify-center mb-6 text-[#b000ff] group-hover:bg-[#b000ff] group-hover:text-white transition-all duration-300 shadow-md">
+  <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-8 hover:border-[#b000ff]/30 transition-all duration-300 group shadow-sm hover:shadow-md hover:shadow-[#b000ff]/10">
+    <div className="w-12 h-12 bg-[#111] border border-[#1f1f1f] rounded-xl flex items-center justify-center mb-6 text-[#b000ff] group-hover:bg-[#b000ff] group-hover:text-white transition-all duration-300 shadow-sm">
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         {icon}
       </svg>

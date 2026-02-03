@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -62,6 +63,14 @@
             from { opacity: 0; backdrop-filter: blur(0px); }
             to { opacity: 1; backdrop-filter: blur(4px); }
         }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .animate-shake {
+            animation: shake 0.2s ease-in-out 0s 2;
+        }
         .modal-animate-show {
             animation: modalShow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
@@ -69,7 +78,25 @@
             animation: overlayShow 0.3s ease forwards;
         }
 
-        /* Ensure form elements inherit the font */
+        /* Success Animations */
+        @keyframes successScale {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            70% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        .animate-success-icon {
+            animation: successScale 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+            animation: fadeUp 0.5s ease-out forwards;
+        }
+
         input, textarea, button, select, span, p, h1, h2, h3, h4, h5, h6, div {
             font-family: 'Unbounded', sans-serif !important;
         }
