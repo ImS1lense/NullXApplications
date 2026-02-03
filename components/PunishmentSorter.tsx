@@ -59,10 +59,14 @@ export const PunishmentSorter: React.FC<PunishmentSorterProps> = ({ onPass, play
     } else {
       playSfx('error');
       setMistakes(prev => prev + 1);
-      // Visual shake effect could be added here
+      
+      // Visual shake effect
       const zone = document.getElementById(`zone-${category}`);
       zone?.classList.add('animate-shake');
       setTimeout(() => zone?.classList.remove('animate-shake'), 500);
+
+      // Deselect immediately (Reset selection)
+      setSelectedItemId(null);
     }
   };
 

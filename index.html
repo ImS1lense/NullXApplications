@@ -13,6 +13,7 @@
                     fontFamily: {
                         sans: ['Unbounded', 'sans-serif'],
                         brand: ['Unbounded', 'sans-serif'],
+                        sga: ['SGA', 'Unbounded', 'sans-serif'],
                     },
                 },
             },
@@ -27,9 +28,22 @@
             font-display: swap;
         }
 
+        @font-face {
+            font-family: 'SGA';
+            src: url('https://db.onlinewebfonts.com/t/2092144d47d6be90eb3e1eb416e91986.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         /* Enforce font globally on all elements */
         * {
             font-family: 'Unbounded', sans-serif !important;
+        }
+
+        .font-sga * {
+            font-family: 'SGA', sans-serif !important;
+            letter-spacing: 0.1em;
         }
 
         body {
