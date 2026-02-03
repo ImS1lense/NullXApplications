@@ -14,6 +14,7 @@
                         sans: ['Unbounded', 'sans-serif'],
                         brand: ['Unbounded', 'sans-serif'],
                         sga: ['SGA', 'Unbounded', 'sans-serif'],
+                        minecraft: ['Minecraft', 'monospace'],
                     },
                 },
             },
@@ -36,6 +37,14 @@
             font-display: swap;
         }
 
+        @font-face {
+            font-family: 'Minecraft';
+            src: url('fonts/minecraft.ttf') format('truetype'); /* User specified path */
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         /* Enforce font globally on all elements */
         * {
             font-family: 'Unbounded', sans-serif !important;
@@ -45,6 +54,11 @@
             font-family: 'SGA', sans-serif !important;
             letter-spacing: 0.1em;
         }
+        
+        /* Specific override for Minecraft font class */
+        .font-minecraft, .font-minecraft * {
+            font-family: 'Minecraft', 'Courier New', monospace !important;
+        }
 
         body {
             background-color: #050505;
@@ -53,13 +67,6 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             font-family: 'Unbounded', sans-serif !important;
-        }
-
-        /* Hide default cursor on desktop to let CustomCursor shine */
-        @media (pointer: fine) {
-            body, a, button, input, textarea, select, label, .cursor-pointer {
-                cursor: none !important;
-            }
         }
 
         .glow-purple:focus {

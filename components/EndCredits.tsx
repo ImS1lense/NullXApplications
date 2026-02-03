@@ -17,8 +17,7 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
     // Start Audio
     audioRef.current = new Audio(MUSIC_URL);
     audioRef.current.volume = 0.5;
-    // Attempt play, might be blocked by browser policy without interaction, 
-    // but usually works if user interacted with the page previously (submit button).
+    // Attempt play
     audioRef.current.play().catch(e => console.log("Auto-play blocked", e));
 
     const timer = setTimeout(() => {
@@ -35,7 +34,7 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col items-center justify-center font-minecraft">
       {/* Dirt Background */}
       <div 
         className="absolute inset-0 opacity-20 pointer-events-none"
@@ -52,11 +51,11 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
       {/* Scrolling Text Container */}
       <div className="relative w-full max-w-2xl h-full overflow-hidden perspective-3d">
         <div className="animate-credits-scroll absolute top-[100%] left-0 right-0 text-center pb-20">
-            <h1 className="text-[#20aaaa] font-brand font-bold text-4xl mb-12 uppercase tracking-widest drop-shadow-md">
+            <h1 className="text-[#20aaaa] font-bold text-4xl mb-12 uppercase tracking-widest drop-shadow-md">
                 NullX Network
             </h1>
 
-            <div className="space-y-12 text-lg md:text-xl font-medium font-brand leading-relaxed">
+            <div className="space-y-12 text-lg md:text-xl font-medium leading-relaxed">
                 <p className="text-white">Я вижу игрока, о котором ты говоришь.</p>
                 <p className="text-[#20aaaa]">{username}</p>
                 
@@ -77,8 +76,10 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
                 <div className="h-10"></div>
 
                 <h2 className="text-[#20aaaa] text-2xl font-bold uppercase">Особая Благодарность</h2>
-                <p className="text-white">lowcode</p>
+                <p className="text-white">lowcocode</p>
                 <p className="text-white">eternity</p>
+                <p className="text-white">xentany</p>
+                <p className="text-white">Egorov</p>
                 <p className="text-white">И Тебе</p>
 
                 <div className="h-32"></div>

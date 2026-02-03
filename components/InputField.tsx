@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 
 // Standard UI Sounds
 const CLICK_SOUND = 'https://www.myinstants.com/media/sounds/minecraft_click.mp3';
-const ERROR_SOUND = 'https://www.myinstants.com/media/sounds/minecraft-damage-oof.mp3'; // Oof sound for error
-const SUCCESS_SOUND = 'https://www.myinstants.com/media/sounds/random-levelup.mp3'; // Subtle orb sound
+const ERROR_SOUND = 'https://www.myinstants.com/media/sounds/classic_hurt-1.mp3'; // Oof sound for error
 
 const playSound = (url: string, volume = 0.3) => {
     const audio = new Audio(url);
@@ -45,7 +44,7 @@ export const InputOnly: React.FC<InputBaseProps> = ({ placeholder, value, onChan
       if (required && value.trim().length === 0) valid = false;
 
       if (valid && value.length > 0) {
-          // Standard validation success (silent or subtle)
+          // Silent success or just visual change
           setIsValid(true);
       } else if (!valid) {
           playSound(ERROR_SOUND, 0.2);

@@ -12,16 +12,23 @@ interface QuizFieldProps {
   selectedValue: string;
   onChange: (value: string) => void;
   required?: boolean;
+  questionNumber?: number;
+  totalQuestions?: number;
 }
 
-export const QuizField: React.FC<QuizFieldProps> = ({ question, options, selectedValue, onChange, required }) => {
+export const QuizField: React.FC<QuizFieldProps> = ({ question, options, selectedValue, onChange, required, questionNumber, totalQuestions }) => {
   const isAnswered = selectedValue !== '';
 
   return (
     <div className={`bg-[#0a0a0a] border rounded-2xl p-6 mb-6 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.3)] ${
       !isAnswered ? 'border-[#1f1f1f]' : 'border-[#b000ff]/30'
     }`}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+      <div className="flex flex-col gap-2 mb-5">
+        {questionNumber && totalQuestions && (
+          <div className="text-[10px] uppercase font-bold tracking-widest text-[#b000ff]">
+             Вопрос {questionNumber} из {totalQuestions}
+          </div>
+        )}
         <h3 className="text-white text-base md:text-lg font-bold leading-tight tracking-tight">
           {question} {required && <span className="text-[#b000ff]">*</span>}
         </h3>

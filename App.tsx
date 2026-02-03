@@ -7,7 +7,6 @@ import { ProgressBar } from './components/ProgressBar.tsx';
 import { CustomModal } from './components/CustomModal.tsx';
 import { GoogleCaptcha } from './components/GoogleCaptcha.tsx';
 import { ParticleBackground } from './components/ParticleBackground.tsx';
-import { CustomCursor } from './components/CustomCursor.tsx';
 import { PunishmentSorter } from './components/PunishmentSorter.tsx';
 import { AchievementToast } from './components/AchievementToast.tsx';
 import { ServerStatus } from './components/ServerStatus.tsx';
@@ -20,7 +19,7 @@ import { sendNotification } from './services/notificationService.ts';
 // User provided SFX
 const SFX = {
   click: 'https://www.myinstants.com/media/sounds/minecraft_click.mp3',
-  success: 'https://www.myinstants.com/media/sounds/levelup_sVAqjan.mp3',
+  success: 'https://www.myinstants.com/media/sounds/minecraft_click.mp3', // Replaced with click as requested
   error: 'https://www.myinstants.com/media/sounds/minecraft-damage-oof.mp3',
   enchant: 'https://www.myinstants.com/media/sounds/enchant.mp3',
   fuse: 'https://www.myinstants.com/media/sounds/creeper-hiss.mp3',
@@ -85,6 +84,7 @@ const App: React.FC = () => {
 
   // Animation States
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState("");
   const [isExploding, setIsExploding] = useState(false); // For shaking (fuse)
   const [hasExploded, setHasExploded] = useState(false); // For disintegration
   const [showTotem, setShowTotem] = useState(false);
@@ -95,15 +95,21 @@ const App: React.FC = () => {
   const [quizTimeElapsed, setQuizTimeElapsed] = useState(0);
 
   const totalSteps = 6;
+  const QUIZ_TOTAL_QUESTIONS = 7; // 3 in step 4, 3 in step 5, 1 in step 6
 
   // Rate Limiting Check & Draft Loading
   useEffect(() => {
     // Check Rate Limit
     const lastSubmission = localStorage.getItem('nullx_last_submission');
     if (lastSubmission) {
-      const hoursSince = (Date.now() - parseInt(lastSubmission)) / (1000 * 60 * 60);
-      if (hoursSince < 24) {
+      const now = Date.now();
+      const diff = 24 * 60 * 60 * 1000 - (now - parseInt(lastSubmission));
+      
+      if (diff > 0) {
         setIsRateLimited(true);
+        const h = Math.floor(diff / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        setTimeRemaining(`${h}ч ${m}мин`);
       }
     }
 
@@ -330,7 +336,6 @@ const App: React.FC = () => {
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-[#050505] relative overflow-hidden">
-        <CustomCursor />
         <AchievementToast show={showAchievement} title="Application Sent!" description="Ваша заявка успешно отправлена" />
         <EndCredits onClose={() => handleReset(false)} username={formData.nickname || 'Player'} />
       </div>
@@ -340,7 +345,6 @@ const App: React.FC = () => {
   if (view === 'landing') {
     return (
       <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start py-10 px-4 overlay-animate-show overflow-hidden relative perspective-1000">
-        <CustomCursor />
         <ParticleBackground />
         <ServerStatus />
         
@@ -351,15 +355,7 @@ const App: React.FC = () => {
             <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.06] blur-[140px] pointer-events-none"></div>
             <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.06] blur-[140px] pointer-events-none"></div>
 
-            <div className="flex items-center gap-2 px-6 py-2 bg-[#111] border border-[#1f1f1f] rounded-full mb-16 shadow-2xl animate-float z-10">
-            <svg className="h-3.5 w-3.5 text-[#b000ff]" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-            </svg>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Official Staff Portal</span>
-            </div>
-
-            <div className="text-center max-w-4xl mb-20 px-4 z-10 flex flex-col items-center">
+            <div className="text-center max-w-4xl mb-20 px-4 z-10 flex flex-col items-center mt-20">
             <h1 className="text-7xl md:text-[110px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase flex flex-col items-center text-white cursor-none relative">
                 <span>Null<span className="text-[#b000ff] ml-3">X</span></span>
                 <span className="text-3xl md:text-[40px] text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] mt-4 font-bold tracking-[0.4em] border-b-2 border-[#b000ff]/30 pb-2">STAFF TEAM</span>
@@ -374,12 +370,12 @@ const App: React.FC = () => {
                 disabled
                 className="group relative inline-flex items-center justify-center px-20 py-7 bg-gray-800 border border-red-900/50 rounded-2xl text-gray-400 font-bold uppercase tracking-[0.2em] text-lg md:text-xl cursor-not-allowed opacity-70"
                 >
-                <span className="mr-3">🔒</span> Заявка отправлена (24ч)
+                <span className="mr-3">🔒</span> {timeRemaining}
                 </button>
             ) : (
                 <button 
                 onClick={() => { playSfx('click'); setView('form'); }}
-                className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)] cursor-none"
+                className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)] cursor-pointer"
                 >
                 Подать заявку
                 </button>
@@ -450,7 +446,6 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen py-12 px-4 md:px-6 relative overflow-hidden flex flex-col items-center bg-[#050505] overlay-animate-show transition-all duration-100 ${isExploding ? 'animate-[shake_0.5s_ease-in-out_infinite] bg-red-900/10' : ''}`}>
-      <CustomCursor />
       <TotemPop show={showTotem} onComplete={() => setShowTotem(false)} />
       <CustomModal isOpen={modal.isOpen} onClose={() => setModal({ ...modal, isOpen: false })} title={modal.title} message={modal.message} />
       
@@ -473,7 +468,7 @@ const App: React.FC = () => {
                     if (formData.nickname.length > 0) setShowTotem(true); 
                     setView('landing'); 
                 }}
-                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
+                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors group cursor-pointer"
              >
                 <svg className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -486,7 +481,7 @@ const App: React.FC = () => {
                 type="button"
                 onClick={() => handleReset(true)}
                 title="Очистить форму"
-                className={`group/reset relative p-2 rounded-full transition-all duration-200 ${isExploding ? 'bg-white text-black scale-110' : 'hover:bg-red-900/30'}`}
+                className={`group/reset relative p-2 rounded-full transition-all duration-200 cursor-pointer ${isExploding ? 'bg-white text-black scale-110' : 'hover:bg-red-900/30'}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${isExploding ? 'text-black' : 'text-gray-500 group-hover/reset:text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -605,6 +600,8 @@ const App: React.FC = () => {
           {currentStep === 4 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-4">
               <QuizField 
+                questionNumber={1}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Какое наказание за фразы 'ez', 'bezdar', 'slabak'?"
                 selectedValue={formData.weaknessPunishment}
                 onChange={handleQuizChange('weaknessPunishment')}
@@ -615,6 +612,8 @@ const App: React.FC = () => {
                 ]}
               />
               <QuizField 
+                questionNumber={2}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Разрешено ли рекламировать FunTime или HolyWorld?"
                 selectedValue={formData.mentionAllowedProjects}
                 onChange={handleQuizChange('mentionAllowedProjects')}
@@ -624,6 +623,8 @@ const App: React.FC = () => {
                 ]}
               />
               <QuizField 
+                questionNumber={3}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Наказание за прямое оскорбление модерации?"
                 selectedValue={formData.insultModPunishment}
                 onChange={handleQuizChange('insultModPunishment')}
@@ -639,6 +640,8 @@ const App: React.FC = () => {
           {currentStep === 5 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-4">
                <QuizField 
+                questionNumber={4}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Максимальное кол-во человек в команде?"
                 selectedValue={formData.teamLimit}
                 onChange={handleQuizChange('teamLimit')}
@@ -649,6 +652,8 @@ const App: React.FC = () => {
                 ]}
               />
               <QuizField 
+                questionNumber={5}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Разрешено ли использование мода BetterPvP?"
                 selectedValue={formData.betterPvpAllowed}
                 onChange={handleQuizChange('betterPvpAllowed')}
@@ -658,6 +663,8 @@ const App: React.FC = () => {
                 ]}
               />
               <QuizField 
+                questionNumber={6}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Разрешено ли иметь мультиаккаунт на разных ТГ?"
                 selectedValue={formData.multiAccountAllowed}
                 onChange={handleQuizChange('multiAccountAllowed')}
@@ -689,6 +696,8 @@ const App: React.FC = () => {
               </SectionWrapper>
               
               <QuizField 
+                questionNumber={7}
+                totalQuestions={QUIZ_TOTAL_QUESTIONS}
                 question="Наказание за деанон других игроков?"
                 selectedValue={formData.deanonPunishment}
                 onChange={handleQuizChange('deanonPunishment')}
@@ -713,7 +722,7 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-4 bg-[#111] border border-[#1f1f1f] rounded-xl text-gray-400 font-extrabold uppercase tracking-widest text-[10px] hover:bg-[#1a1a1a] hover:text-white transition-all active:scale-95 shadow-lg cursor-none"
+                className="flex-1 py-4 bg-[#111] border border-[#1f1f1f] rounded-xl text-gray-400 font-extrabold uppercase tracking-widest text-[10px] hover:bg-[#1a1a1a] hover:text-white transition-all active:scale-95 shadow-lg cursor-pointer"
               >
                 Назад
               </button>
@@ -723,7 +732,7 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-[2] py-4 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] hover:brightness-110 shadow-[0_10px_30px_rgba(176,0,255,0.3)] transition-all active:scale-95 cursor-none"
+                className="flex-[2] py-4 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] hover:brightness-110 shadow-[0_10px_30px_rgba(176,0,255,0.3)] transition-all active:scale-95 cursor-pointer"
               >
                 Далее
               </button>
@@ -731,7 +740,7 @@ const App: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || !isCaptchaVerified}
-                className={`flex-[2] py-4 rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg cursor-none ${
+                className={`flex-[2] py-4 rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg cursor-pointer ${
                   isSubmitting || !isCaptchaVerified 
                   ? 'bg-gray-800 opacity-50 cursor-not-allowed border border-gray-700' 
                   : 'bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 shadow-[0_0_30px_rgba(176,0,255,0.45)]'
