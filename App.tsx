@@ -12,9 +12,9 @@ import { sendNotification } from './services/notificationService.ts';
 
 // Authentic Minecraft SFX via jsDelivr CDN
 const SFX = {
-  click: 'https://cdn.jsdelivr.net/gh/Rebane2001/minecraft-assets@master/assets/minecraft/sounds/ui/button/click.ogg',
-  success: 'https://cdn.jsdelivr.net/gh/Rebane2001/minecraft-assets@master/assets/minecraft/sounds/random/orb.ogg',
-  error: 'https://cdn.jsdelivr.net/gh/Rebane2001/minecraft-assets@master/assets/minecraft/sounds/entity/villager/no1.ogg'
+  click: 'https://www.myinstants.com/media/sounds/minecraft_click.mp3',
+  success: 'https://www.myinstants.com/media/sounds/levelup_sVAqjan.mp3',
+  error: 'https://www.myinstants.com/media/sounds/minecraft-villager-hurhh.mp3'
 };
 
 const initialFormState: FormData = {
