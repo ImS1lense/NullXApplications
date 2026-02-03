@@ -7,19 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       /* 
-         ВАЖНО: Укажи правильное имя файла шрифта в папке fonts.
-         Например, если файл называется 'myfont.ttf', замени 'fontname.woff2' на 'myfont.ttf'
+         Подключаем шрифт Unbounded-SemiBold
       */
       @font-face {
-        font-family: 'CustomFont';
-        src: url('/fonts/fontname.woff2') format('woff2'),
-             url('/fonts/fontname.ttf') format('truetype');
+        font-family: 'Unbounded';
+        src: url('/fonts/Unbounded-SemiBold.ttf') format('truetype');
         font-weight: normal;
         font-style: normal;
       }
 
       body {
-        font-family: 'CustomFont', 'Inter', sans-serif; /* Сначала пробуем твой шрифт, потом стандартные */
+        font-family: 'Unbounded', 'Inter', sans-serif;
         background-color: #09090b;
       }
 
