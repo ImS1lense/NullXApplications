@@ -76,7 +76,7 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
                 <div className="h-10"></div>
 
                 <h2 className="text-[#20aaaa] text-2xl font-bold uppercase">Особая Благодарность</h2>
-                <p className="text-white">lowcocode</p>
+                <p className="text-white">lowcode</p>
                 <p className="text-white">eternity</p>
                 <p className="text-white">xentany</p>
                 <p className="text-white">Egorov</p>
