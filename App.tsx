@@ -10,7 +10,7 @@ import { ParticleBackground } from './components/ParticleBackground.tsx';
 import { FormData } from './types.ts';
 import { sendNotification } from './services/notificationService.ts';
 
-// Authentic Minecraft SFX via jsDelivr CDN
+// User provided SFX
 const SFX = {
   click: 'https://www.myinstants.com/media/sounds/minecraft_click.mp3',
   success: 'https://www.myinstants.com/media/sounds/levelup_sVAqjan.mp3',
@@ -82,7 +82,7 @@ const App: React.FC = () => {
 
   const playSfx = (type: 'click' | 'success' | 'error') => {
     const audio = new Audio(SFX[type]);
-    audio.volume = 0.5; // Slightly louder for authentic sounds
+    audio.volume = 0.5; 
     audio.play().catch(() => {}); // Catch error if user hasn't interacted yet
   };
 

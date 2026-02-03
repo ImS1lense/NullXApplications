@@ -12,18 +12,18 @@ interface VisualCaptchaProps {
 }
 
 const CATEGORIES = [
-  { name: 'Золотые яблоки', key: 'apple', icon: 'https://minecraft.wiki/images/Golden_Apple_JE2_BE2.png' },
-  { name: 'Алмазные мечи', key: 'sword', icon: 'https://minecraft.wiki/images/Diamond_Sword_JE3_BE3.png' },
-  { name: 'Криперов', key: 'creeper', icon: 'https://minecraft.wiki/images/Creeper_Face_JE1.png' },
-  { name: 'ТНТ', key: 'tnt', icon: 'https://minecraft.wiki/images/TNT_JE3_BE2.png' },
+  { name: 'Золотые яблоки', key: 'apple', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/golden_apple.png' },
+  { name: 'Алмазные мечи', key: 'sword', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/diamond_sword.png' },
+  { name: 'Криперов', key: 'creeper', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/creeper_head.png' },
+  { name: 'ТНТ', key: 'tnt', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/tnt_side.png' },
 ];
 
 const DECOYS = [
-  'https://minecraft.wiki/images/Chest_JE2_BE2.png',
-  'https://minecraft.wiki/images/Bread_JE3_BE3.png',
-  'https://minecraft.wiki/images/Stone_JE2_BE2.png',
-  'https://minecraft.wiki/images/Oak_Log_JE3_BE2.png',
-  'https://minecraft.wiki/images/Iron_Ingot_JE3_BE2.png',
+  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/chest_front.png',
+  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/bread.png',
+  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/stone.png',
+  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/oak_log.png',
+  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/iron_ingot.png',
 ];
 
 export const VisualCaptcha: React.FC<VisualCaptchaProps> = ({ onVerify }) => {
