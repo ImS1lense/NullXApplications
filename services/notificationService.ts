@@ -28,7 +28,9 @@ export const sendNotification = async (data: FormData, analytics: AnalyticsData)
     `8. Реклама (Разрешены FT/HW): **${check(data.mentionAllowedProjects, 'yes')}**`,
   ];
   
-  const testStatus = data.punishmentTestPassed ? "✅ ПРОЙДЕН (Без ошибок)" : "⚠️ ПРОПУЩЕН/ОШИБКИ";
+  const testStatus = data.punishmentTestPassed 
+    ? `✅ ПРОЙДЕН (Ошибок: ${data.punishmentTestMistakes})` 
+    : "⚠️ ПРОПУЩЕН/НЕ ЗАВЕРШЕН";
 
   // Spam detection flag
   const isFastSubmit = analytics.timeSpentSeconds < 45; // less than 45 seconds to fill whole form

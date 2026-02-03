@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { InputOnly, TextAreaOnly } from './components/InputField.tsx';
 import { SectionWrapper } from './components/SectionWrapper.tsx';
@@ -10,6 +11,8 @@ import { CustomCursor } from './components/CustomCursor.tsx';
 import { PunishmentSorter } from './components/PunishmentSorter.tsx';
 import { AchievementToast } from './components/AchievementToast.tsx';
 import { ServerStatus } from './components/ServerStatus.tsx';
+import { EndCredits } from './components/EndCredits.tsx';
+import { ExplosionParticles } from './components/ExplosionParticles.tsx';
 import { FormData } from './types.ts';
 import { sendNotification } from './services/notificationService.ts';
 
@@ -18,7 +21,9 @@ const SFX = {
   click: 'https://www.myinstants.com/media/sounds/minecraft_click.mp3',
   success: 'https://www.myinstants.com/media/sounds/levelup_sVAqjan.mp3',
   error: 'https://www.myinstants.com/media/sounds/minecraft-villager-hurhh.mp3',
-  enchant: 'https://www.myinstants.com/media/sounds/enchant.mp3'
+  enchant: 'https://www.myinstants.com/media/sounds/enchant.mp3',
+  fuse: 'https://www.myinstants.com/media/sounds/creeper-hiss.mp3',
+  explode: 'https://www.myinstants.com/media/sounds/explode1.mp3'
 };
 
 interface FeatureCardProps {
@@ -59,6 +64,7 @@ const initialFormState: FormData = {
   insultModPunishment: '',
   mentionAllowedProjects: '',
   punishmentTestPassed: false,
+  punishmentTestMistakes: 0,
 };
 
 const DRAFT_KEY = 'nullx_form_draft';
@@ -77,6 +83,8 @@ const App: React.FC = () => {
 
   // New States
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [isExploding, setIsExploding] = useState(false); // For shaking (fuse)
+  const [hasExploded, setHasExploded] = useState(false); // For disintegration
 
   // Analytics State
   const startTimeRef = useRef<number>(Date.now());
@@ -266,8 +274,30 @@ const App: React.FC = () => {
     setIsSubmitting(false);
   };
 
-  const handleReset = () => {
-    playSfx('click');
+  const handleReset = (withExplosion = false) => {
+    if (withExplosion) {
+      // Creeper Logic
+      playSfx('fuse');
+      setIsExploding(true); // Triggers shake animation
+      
+      setTimeout(() => {
+        playSfx('explode');
+        setIsExploding(false);
+        setHasExploded(true); // Triggers visual disintegration and particles
+        
+        // Wait for visual disintegration to finish before resetting state
+        setTimeout(() => {
+          performReset();
+          setHasExploded(false);
+        }, 1000); 
+      }, 1500); // Fuse time
+    } else {
+      playSfx('click');
+      performReset();
+    }
+  };
+
+  const performReset = () => {
     setFormData(initialFormState);
     setCurrentStep(1);
     setIsCaptchaVerified(false);
@@ -278,42 +308,16 @@ const App: React.FC = () => {
     quizStartTimeRef.current = 0;
     setQuizTimeElapsed(0);
     setView('landing');
+    localStorage.removeItem(DRAFT_KEY);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505] overlay-animate-show relative overflow-hidden">
+      <div className="min-h-screen bg-[#050505] relative overflow-hidden">
         <CustomCursor />
         <AchievementToast show={showAchievement} title="Application Sent!" description="Ваша заявка успешно отправлена" />
-        <ParticleBackground />
-        <div className="max-w-md w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-10 text-center shadow-[0_0_60px_rgba(176,0,255,0.25)] modal-animate-show relative overflow-hidden z-10">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-[#6200ea] opacity-20 blur-[60px] pointer-events-none"></div>
-
-          <div className="relative z-10">
-            <div className="relative mx-auto mb-8 w-24 h-24 flex items-center justify-center">
-              <div className="absolute inset-0 bg-[#b000ff] rounded-full animate-ping opacity-20 duration-1000"></div>
-              <div className="relative w-24 h-24 bg-gradient-to-br from-[#6200ea] to-[#b000ff] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(176,0,255,0.5)] animate-success-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-
-            <h2 className="text-3xl font-brand font-bold mb-4 tracking-tight text-white uppercase animate-fade-up opacity-0" style={{animationDelay: '0.2s'}}>Успешно</h2>
-            <p className="text-gray-400 mb-8 leading-relaxed font-medium animate-fade-up opacity-0" style={{animationDelay: '0.3s'}}>
-              Ваша заявка принята и отправлена администрации NullX.
-            </p>
-            <button 
-              type="button"
-              onClick={handleReset} 
-              className="w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 active:scale-95 transition-all shadow-lg text-white animate-fade-up opacity-0"
-              style={{animationDelay: '0.4s'}}
-            >
-              Закрыть
-            </button>
-          </div>
-        </div>
+        <EndCredits onClose={() => handleReset(false)} username={formData.nickname || 'Player'} />
       </div>
     );
   }
@@ -413,26 +417,50 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 md:px-6 relative overflow-hidden flex flex-col items-center bg-[#050505] overlay-animate-show">
+    <div className={`min-h-screen py-12 px-4 md:px-6 relative overflow-hidden flex flex-col items-center bg-[#050505] overlay-animate-show transition-all duration-100 ${isExploding ? 'animate-[shake_0.5s_ease-in-out_infinite] bg-red-900/10' : ''}`}>
       <CustomCursor />
       <CustomModal isOpen={modal.isOpen} onClose={() => setModal({ ...modal, isOpen: false })} title={modal.title} message={modal.message} />
       
       {/* Backgrounds */}
       <ParticleBackground />
+      {hasExploded && <ExplosionParticles />}
+      
       <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.03] blur-[140px] pointer-events-none"></div>
       <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.03] blur-[140px] pointer-events-none"></div>
 
-      <div className="max-w-2xl w-full relative z-10">
-        <header className="text-center mb-10 animate-float flex flex-col items-center">
-          <button 
-            onClick={() => { playSfx('click'); setView('landing'); }}
-            className="mb-6 flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
-          >
-            <svg className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span className="text-[10px] uppercase font-bold tracking-widest">Вернуться на главную</span>
-          </button>
+      {/* Main Content Container with Disintegration Effect */}
+      <div className={`max-w-2xl w-full relative z-10 transition-all duration-700 ${hasExploded ? 'opacity-0 scale-75 rotate-3 blur-sm brightness-50' : 'opacity-100 scale-100'}`}>
+        <header className="text-center mb-10 animate-float flex flex-col items-center relative">
+          
+          <div className="w-full flex justify-between items-center mb-6">
+             <button 
+                onClick={() => { playSfx('click'); setView('landing'); }}
+                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
+             >
+                <svg className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="text-[10px] uppercase font-bold tracking-widest">Назад</span>
+             </button>
+
+             {/* Creeper Reset Button */}
+             <button
+                type="button"
+                onClick={() => handleReset(true)}
+                title="Очистить форму"
+                className={`group/reset relative p-2 rounded-full transition-all duration-200 ${isExploding ? 'bg-white text-black scale-110' : 'hover:bg-red-900/30'}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-colors ${isExploding ? 'text-black' : 'text-gray-500 group-hover/reset:text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {/* Creeper face hint on hover */}
+                {!isExploding && (
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/reset:opacity-100 transition-opacity text-[10px] text-green-500 font-bold whitespace-nowrap">
+                    Tnt?
+                    </div>
+                )}
+             </button>
+          </div>
 
           <h1 className="text-6xl md:text-7xl font-brand font-extrabold tracking-tighter mb-2 select-none uppercase text-white cursor-none">
             Null<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] ml-3">X</span>
@@ -526,7 +554,11 @@ const App: React.FC = () => {
                <SectionWrapper title="Проверка Знаний" icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>}>
                  <PunishmentSorter 
                    playSfx={playSfx}
-                   onPass={() => setFormData(prev => ({ ...prev, punishmentTestPassed: true }))}
+                   onPass={(mistakes) => setFormData(prev => ({ 
+                      ...prev, 
+                      punishmentTestPassed: true, 
+                      punishmentTestMistakes: mistakes 
+                    }))}
                  />
                </SectionWrapper>
              </div>

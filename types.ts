@@ -21,4 +21,5 @@ export interface FormData {
   mentionAllowedProjects: string;
   // New Test
   punishmentTestPassed: boolean;
+  punishmentTestMistakes: number;
 }

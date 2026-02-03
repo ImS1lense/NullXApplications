@@ -8,7 +8,7 @@ interface Violation {
 }
 
 interface PunishmentSorterProps {
-  onPass: () => void;
+  onPass: (mistakes: number) => void;
   playSfx: (type: 'click' | 'success' | 'error') => void;
 }
 
@@ -36,9 +36,9 @@ export const PunishmentSorter: React.FC<PunishmentSorterProps> = ({ onPass, play
     if (completedItems.length === VIOLATIONS.length && !isComplete) {
       setIsComplete(true);
       playSfx('success');
-      onPass();
+      onPass(mistakes);
     }
-  }, [completedItems, isComplete, onPass, playSfx]);
+  }, [completedItems, isComplete, onPass, playSfx, mistakes]);
 
   const handleItemClick = (id: number) => {
     if (completedItems.includes(id)) return;
