@@ -13,6 +13,7 @@ import { AchievementToast } from './components/AchievementToast.tsx';
 import { ServerStatus } from './components/ServerStatus.tsx';
 import { EndCredits } from './components/EndCredits.tsx';
 import { ExplosionParticles } from './components/ExplosionParticles.tsx';
+import { TotemPop } from './components/TotemPop.tsx';
 import { FormData } from './types.ts';
 import { sendNotification } from './services/notificationService.ts';
 
@@ -20,10 +21,11 @@ import { sendNotification } from './services/notificationService.ts';
 const SFX = {
   click: 'https://www.myinstants.com/media/sounds/minecraft_click.mp3',
   success: 'https://www.myinstants.com/media/sounds/levelup_sVAqjan.mp3',
-  error: 'https://www.myinstants.com/media/sounds/minecraft-villager-hurhh.mp3',
+  error: 'https://www.myinstants.com/media/sounds/minecraft-damage-oof.mp3',
   enchant: 'https://www.myinstants.com/media/sounds/enchant.mp3',
   fuse: 'https://www.myinstants.com/media/sounds/creeper-hiss.mp3',
-  explode: 'https://www.myinstants.com/media/sounds/explode1.mp3'
+  explode: 'https://www.myinstants.com/media/sounds/explode1.mp3',
+  elytra: 'https://www.myinstants.com/media/sounds/elytra-fly.mp3'
 };
 
 interface FeatureCardProps {
@@ -81,10 +83,11 @@ const App: React.FC = () => {
   const [captchaAttempts, setCaptchaAttempts] = useState(0);
   const [showAchievement, setShowAchievement] = useState(false);
 
-  // New States
+  // Animation States
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [isExploding, setIsExploding] = useState(false); // For shaking (fuse)
   const [hasExploded, setHasExploded] = useState(false); // For disintegration
+  const [showTotem, setShowTotem] = useState(false);
 
   // Analytics State
   const startTimeRef = useRef<number>(Date.now());
@@ -104,15 +107,27 @@ const App: React.FC = () => {
       }
     }
 
-    // Load Draft
+    // Load Draft logic
     const savedDraft = localStorage.getItem(DRAFT_KEY);
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
-        setFormData(prev => ({ ...prev, ...parsed }));
+        // Only trigger totem if the draft has substantial data (e.g., nickname filled)
+        if (parsed.nickname && parsed.nickname.length > 0) {
+           setFormData(prev => ({ ...prev, ...parsed }));
+           // Trigger Totem of Undying on draft recovery
+           setShowTotem(true);
+        }
       } catch (e) {
         console.error("Failed to load draft");
       }
+    }
+    
+    // Play Elytra swoosh on mount for landing page
+    if (view === 'landing') {
+        const audio = new Audio(SFX.elytra);
+        audio.volume = 0.2;
+        audio.play().catch(() => {});
     }
   }, []);
 
@@ -324,94 +339,111 @@ const App: React.FC = () => {
 
   if (view === 'landing') {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start py-10 px-4 overlay-animate-show overflow-hidden relative">
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start py-10 px-4 overlay-animate-show overflow-hidden relative perspective-1000">
         <CustomCursor />
         <ParticleBackground />
         <ServerStatus />
         
-        {/* Gradients */}
-        <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.06] blur-[140px] pointer-events-none"></div>
-        <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.06] blur-[140px] pointer-events-none"></div>
+        {/* Elytra Animation Container */}
+        <div className="w-full flex flex-col items-center animate-elytra-land">
+        
+            {/* Gradients */}
+            <div className="fixed top-[-15%] left-[-10%] w-[60%] h-[60%] bg-[#6200ea] opacity-[0.06] blur-[140px] pointer-events-none"></div>
+            <div className="fixed bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-[#b000ff] opacity-[0.06] blur-[140px] pointer-events-none"></div>
 
-        <div className="flex items-center gap-2 px-6 py-2 bg-[#111] border border-[#1f1f1f] rounded-full mb-16 shadow-2xl animate-float z-10">
-          <svg className="h-3.5 w-3.5 text-[#b000ff]" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-              <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-          </svg>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Official Staff Portal</span>
-        </div>
-
-        <div className="text-center max-w-4xl mb-20 px-4 z-10 flex flex-col items-center">
-          <h1 className="text-7xl md:text-[110px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase flex flex-col items-center text-white cursor-none relative">
-            <span>Null<span className="text-[#b000ff] ml-3">X</span></span>
-            <span className="text-3xl md:text-[40px] text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] mt-4 font-bold tracking-[0.4em] border-b-2 border-[#b000ff]/30 pb-2">STAFF TEAM</span>
-          </h1>
-          
-          <p className="text-gray-400 text-sm md:text-base max-w-xl mx-auto leading-relaxed mb-10 opacity-80 mt-8">
-            Мы ищем амбициозных игроков, готовых следить за порядком и помогать сообществу NullX расти. Твой путь в команду начинается здесь.
-          </p>
-          
-          {isRateLimited ? (
-            <button 
-              disabled
-              className="group relative inline-flex items-center justify-center px-20 py-7 bg-gray-800 border border-red-900/50 rounded-2xl text-gray-400 font-bold uppercase tracking-[0.2em] text-lg md:text-xl cursor-not-allowed opacity-70"
-            >
-              <span className="mr-3">🔒</span> Заявка отправлена (24ч)
-            </button>
-          ) : (
-            <button 
-              onClick={() => { playSfx('click'); setView('form'); }}
-              className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)] cursor-none"
-            >
-              Подать заявку
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-12 md:gap-32 mb-24 max-w-5xl opacity-80 z-10">
-          <div className="text-center group">
-            <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">7</h3>
-            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Модераторов</p>
-          </div>
-          <div className="text-center group">
-            <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">24/7</h3>
-            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Активность</p>
-          </div>
-          <div className="text-center group">
-            <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">1k+</h3>
-            <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Игроков</p>
-          </div>
-        </div>
-
-        <div className="w-full max-w-6xl mb-20 z-10">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-brand font-extrabold uppercase mb-4 tracking-tight text-white">О работе персонала</h2>
-              <p className="text-gray-500 tracking-wider text-sm font-medium">Мы — команда профессионалов, которая ежедневно делает сервер лучше</p>
+            <div className="flex items-center gap-2 px-6 py-2 bg-[#111] border border-[#1f1f1f] rounded-full mb-16 shadow-2xl animate-float z-10">
+            <svg className="h-3.5 w-3.5 text-[#b000ff]" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
+                <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
+            </svg>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Official Staff Portal</span>
             </div>
+
+            <div className="text-center max-w-4xl mb-20 px-4 z-10 flex flex-col items-center">
+            <h1 className="text-7xl md:text-[110px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase flex flex-col items-center text-white cursor-none relative">
+                <span>Null<span className="text-[#b000ff] ml-3">X</span></span>
+                <span className="text-3xl md:text-[40px] text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] mt-4 font-bold tracking-[0.4em] border-b-2 border-[#b000ff]/30 pb-2">STAFF TEAM</span>
+            </h1>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <FeatureCard 
-                icon={<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />}
-                title="Быстрые ответы"
-                desc="Отвечаем на обращения в кратчайшие сроки и помогаем новичкам освоиться."
-              />
-              <FeatureCard 
-                icon={<path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />}
-                title="Опытная команда"
-                desc="Квалифицированные специалисты с глубоким знанием правил и механик проекта."
-              />
-              <FeatureCard 
-                icon={<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                title="Помощь 24/7"
-                desc="Работаем круглосуточно для вашего комфорта и стабильности игрового мира."
-              />
-              <FeatureCard 
-                icon={<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />}
-                title="Справедливость"
-                desc="Объективный подход к каждой ситуации и строгое соблюдение регламента сервера."
-              />
+            <p className="text-gray-400 text-sm md:text-base max-w-xl mx-auto leading-relaxed mb-10 opacity-80 mt-8">
+                Мы ищем амбициозных игроков, готовых следить за порядком и помогать сообществу NullX расти. Твой путь в команду начинается здесь.
+            </p>
+            
+            {isRateLimited ? (
+                <button 
+                disabled
+                className="group relative inline-flex items-center justify-center px-20 py-7 bg-gray-800 border border-red-900/50 rounded-2xl text-gray-400 font-bold uppercase tracking-[0.2em] text-lg md:text-xl cursor-not-allowed opacity-70"
+                >
+                <span className="mr-3">🔒</span> Заявка отправлена (24ч)
+                </button>
+            ) : (
+                <button 
+                onClick={() => { playSfx('click'); setView('form'); }}
+                className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)] cursor-none"
+                >
+                Подать заявку
+                </button>
+            )}
             </div>
-          </div>
+
+            <div className="flex flex-wrap justify-center gap-12 md:gap-32 mb-24 max-w-5xl opacity-80 z-10">
+            <div className="text-center group">
+                <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">7</h3>
+                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Модераторов</p>
+            </div>
+            <div className="text-center group">
+                <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">24/7</h3>
+                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Активность</p>
+            </div>
+            <div className="text-center group">
+                <h3 className="text-4xl font-brand font-extrabold text-white mb-2 group-hover:text-[#b000ff] transition-colors">1k+</h3>
+                <p className="text-[9px] uppercase tracking-widest text-gray-500 font-bold">Игроков</p>
+            </div>
+            </div>
+
+            <div className="w-full max-w-6xl mb-20 z-10">
+                <div className="text-center mb-16">
+                <h2 className="text-4xl font-brand font-extrabold uppercase mb-4 tracking-tight text-white">О работе персонала</h2>
+                <p className="text-gray-500 tracking-wider text-sm font-medium">Мы — команда профессионалов, которая ежедневно делает сервер лучше</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FeatureCard 
+                    icon={<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />}
+                    title="Быстрые ответы"
+                    desc="Отвечаем на обращения в кратчайшие сроки и помогаем новичкам освоиться."
+                />
+                <FeatureCard 
+                    icon={<path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />}
+                    title="Опытная команда"
+                    desc="Квалифицированные специалисты с глубоким знанием правил и механик проекта."
+                />
+                <FeatureCard 
+                    icon={<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />}
+                    title="Помощь 24/7"
+                    desc="Работаем круглосуточно для вашего комфорта и стабильности игрового мира."
+                />
+                <FeatureCard 
+                    icon={<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />}
+                    title="Справедливость"
+                    desc="Объективный подход к каждой ситуации и строгое соблюдение регламента сервера."
+                />
+                </div>
+            </div>
+        </div>
+        
+        <style>{`
+          .perspective-1000 {
+             perspective: 1000px;
+          }
+          @keyframes elytraLand {
+             0% { opacity: 0; transform: translateY(-500px) rotateX(45deg) scale(1.5); }
+             100% { opacity: 1; transform: translateY(0) rotateX(0) scale(1); }
+          }
+          .animate-elytra-land {
+             animation: elytraLand 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          }
+        `}</style>
       </div>
     );
   }
@@ -419,6 +451,7 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen py-12 px-4 md:px-6 relative overflow-hidden flex flex-col items-center bg-[#050505] overlay-animate-show transition-all duration-100 ${isExploding ? 'animate-[shake_0.5s_ease-in-out_infinite] bg-red-900/10' : ''}`}>
       <CustomCursor />
+      <TotemPop show={showTotem} onComplete={() => setShowTotem(false)} />
       <CustomModal isOpen={modal.isOpen} onClose={() => setModal({ ...modal, isOpen: false })} title={modal.title} message={modal.message} />
       
       {/* Backgrounds */}
@@ -434,7 +467,12 @@ const App: React.FC = () => {
           
           <div className="w-full flex justify-between items-center mb-6">
              <button 
-                onClick={() => { playSfx('click'); setView('landing'); }}
+                onClick={() => { 
+                    playSfx('click'); 
+                    // Trigger Totem visual if saving draft/going back
+                    if (formData.nickname.length > 0) setShowTotem(true); 
+                    setView('landing'); 
+                }}
                 className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
              >
                 <svg className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
