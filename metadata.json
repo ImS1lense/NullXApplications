@@ -1,5 +1,5 @@
 {
-  "name": "NULLX Staff Panel",
-  "description": "Authorization portal for NULLX Minecraft server staff.",
+  "name": "NULLX Panel",
+  "description": "Authorization portal for NULLX.",
   "requestFramePermissions": []
 }
