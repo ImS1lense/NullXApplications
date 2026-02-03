@@ -11,7 +11,7 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
 
   // C418 - Alpha (Minecraft End Credits)
   // Using a more reliable CDN link
-  const MUSIC_URL = "https://www.myinstants.com/media/sounds/c418-stranger-think.mp3"; 
+  const MUSIC_URL = "https://www.myinstants.com/media/sounds/minecraft-music_3fsjfvj.mp3"; 
 
   // Auto-redirect after animation ends (40 seconds)
   useEffect(() => {
@@ -83,7 +83,7 @@ export const EndCredits: React.FC<EndCreditsProps> = ({ onClose, username }) => 
                 <div className="h-10"></div>
 
                 <h2 className="text-[#20aaaa] text-2xl font-bold uppercase">Особая Благодарность</h2>
-                <p className="text-white">lowcocode</p>
+                <p className="text-white">lowcode</p>
                 <p className="text-white">eternity</p>
                 <p className="text-white">xentany</p>
                 <p className="text-white">Egorov</p>
