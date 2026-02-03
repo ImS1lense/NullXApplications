@@ -18,5 +18,7 @@ export interface FormData {
   deanonPunishment: string;    
   weaknessPunishment: string;  
   insultModPunishment: string; 
-  mentionAllowedProjects: string; 
+  mentionAllowedProjects: string;
+  // New Test
+  punishmentTestPassed: boolean;
 }

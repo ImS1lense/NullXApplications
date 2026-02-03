@@ -27,6 +27,8 @@ export const sendNotification = async (data: FormData, analytics: AnalyticsData)
     `7. Оск. мод (Mute 1д): **${check(data.insultModPunishment, 'mute_1d')}**`,
     `8. Реклама (Разрешены FT/HW): **${check(data.mentionAllowedProjects, 'yes')}**`,
   ];
+  
+  const testStatus = data.punishmentTestPassed ? "✅ ПРОЙДЕН (Без ошибок)" : "⚠️ ПРОПУЩЕН/ОШИБКИ";
 
   // Spam detection flag
   const isFastSubmit = analytics.timeSpentSeconds < 45; // less than 45 seconds to fill whole form
@@ -50,7 +52,8 @@ export const sendNotification = async (data: FormData, analytics: AnalyticsData)
       },
       { name: "📝 О СЕБЕ", value: data.about || "—", inline: false },
       { name: "🛠 ОПЫТ МОДЕРАЦИИ", value: data.previousModExp || "Нет опыта", inline: false },
-      { name: "⚖️ РЕЗУЛЬТАТЫ ТЕСТА", value: quizResults.join("\n"), inline: false },
+      { name: "⚡ ТЕСТ НАКАЗАНИЙ", value: `**Результат:** ${testStatus}`, inline: false },
+      { name: "⚖️ РЕЗУЛЬТАТЫ КВИЗА", value: quizResults.join("\n"), inline: false },
       { 
         name: "🎯 МОТИВАЦИЯ", 
         value: `**Зачем:** ${data.expectations}\n**Обязанности:** ${data.duties}`, 

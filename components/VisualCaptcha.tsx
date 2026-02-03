@@ -11,19 +11,26 @@ interface VisualCaptchaProps {
   onVerify: (isValid: boolean) => void;
 }
 
+// Using jsDelivr for reliable caching and uptime. 
+// Using only 'items' directory to ensure file existence.
+const BASE_URL = "https://cdn.jsdelivr.net/gh/PrismarineJS/minecraft-assets@master/data/1.16.1/items";
+
 const CATEGORIES = [
-  { name: 'Золотые яблоки', key: 'apple', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/golden_apple.png' },
-  { name: 'Алмазные мечи', key: 'sword', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/diamond_sword.png' },
-  { name: 'Криперов', key: 'creeper', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/creeper_head.png' },
-  { name: 'ТНТ', key: 'tnt', icon: 'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/tnt_side.png' },
+  { name: 'Золотые яблоки', key: 'apple', icon: `${BASE_URL}/golden_apple.png` },
+  { name: 'Алмазные мечи', key: 'sword', icon: `${BASE_URL}/diamond_sword.png` },
+  { name: 'Эндер-жемчуг', key: 'pearl', icon: `${BASE_URL}/ender_pearl.png` },
+  { name: 'Ведра лавы', key: 'lava', icon: `${BASE_URL}/lava_bucket.png` },
 ];
 
 const DECOYS = [
-  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/chest_front.png',
-  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/bread.png',
-  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/stone.png',
-  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/blocks/oak_log.png',
-  'https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/d24d9b6/data/1.16.1/items/iron_ingot.png',
+  `${BASE_URL}/bread.png`,
+  `${BASE_URL}/iron_ingot.png`,
+  `${BASE_URL}/stick.png`,
+  `${BASE_URL}/rotten_flesh.png`,
+  `${BASE_URL}/bone.png`,
+  `${BASE_URL}/arrow.png`,
+  `${BASE_URL}/book.png`,
+  `${BASE_URL}/flint_and_steel.png`
 ];
 
 export const VisualCaptcha: React.FC<VisualCaptchaProps> = ({ onVerify }) => {
@@ -132,7 +139,7 @@ export const VisualCaptcha: React.FC<VisualCaptchaProps> = ({ onVerify }) => {
             }`}>
               <img 
                 src={item.iconPath} 
-                alt="Minecraft Item" 
+                alt="Item" 
                 className={`w-12 h-12 object-contain transition-transform duration-500 ${isVerifying ? 'scale-0' : 'scale-100'}`}
                 style={{ imageRendering: 'pixelated' }}
                 loading="eager"

@@ -7,6 +7,9 @@ import { ProgressBar } from './components/ProgressBar.tsx';
 import { CustomModal } from './components/CustomModal.tsx';
 import { GoogleCaptcha } from './components/GoogleCaptcha.tsx';
 import { ParticleBackground } from './components/ParticleBackground.tsx';
+import { CustomCursor } from './components/CustomCursor.tsx';
+import { PunishmentSorter } from './components/PunishmentSorter.tsx';
+import { AchievementToast } from './components/AchievementToast.tsx';
 import { FormData } from './types.ts';
 import { sendNotification } from './services/notificationService.ts';
 
@@ -36,7 +39,10 @@ const initialFormState: FormData = {
   weaknessPunishment: '',
   insultModPunishment: '',
   mentionAllowedProjects: '',
+  punishmentTestPassed: false,
 };
+
+const DRAFT_KEY = 'nullx_form_draft';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'landing' | 'form' | 'blocked'>('landing');
@@ -48,29 +54,51 @@ const App: React.FC = () => {
   
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
   const [captchaAttempts, setCaptchaAttempts] = useState(0);
+  const [showAchievement, setShowAchievement] = useState(false);
 
   // Analytics State
   const startTimeRef = useRef<number>(Date.now());
   const quizStartTimeRef = useRef<number>(0);
   const [quizTimeElapsed, setQuizTimeElapsed] = useState(0);
 
-  const totalSteps = 5;
+  const totalSteps = 6;
 
-  // Rate Limiting Check
+  // Rate Limiting Check & Draft Loading
   useEffect(() => {
+    // Check Rate Limit
     const lastSubmission = localStorage.getItem('nullx_last_submission');
     if (lastSubmission) {
       const hoursSince = (Date.now() - parseInt(lastSubmission)) / (1000 * 60 * 60);
       if (hoursSince < 24) {
         setView('blocked');
+        return;
+      }
+    }
+
+    // Load Draft
+    const savedDraft = localStorage.getItem(DRAFT_KEY);
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        setFormData(prev => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error("Failed to load draft");
       }
     }
   }, []);
 
+  // Save Draft on Change
+  useEffect(() => {
+    if (view === 'form' && !isSubmitted) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+    }
+  }, [formData, view, isSubmitted]);
+
   // Quiz Timer Logic
   useEffect(() => {
     let interval: number;
-    if (currentStep === 3 || currentStep === 4) {
+    // Quiz is step 4 and 5 now
+    if (currentStep === 4 || currentStep === 5) {
       if (quizStartTimeRef.current === 0) quizStartTimeRef.current = Date.now();
       
       interval = window.setInterval(() => {
@@ -133,15 +161,17 @@ const App: React.FC = () => {
           formData.activeTime.length === 11 && 
           formData.about.trim() !== ''
         );
-      case 3:
-        return formData.weaknessPunishment !== '' && formData.mentionAllowedProjects !== '' && formData.insultModPunishment !== '';
+      case 3: // Punishment Sorter
+        return formData.punishmentTestPassed;
       case 4:
+        return formData.weaknessPunishment !== '' && formData.mentionAllowedProjects !== '' && formData.insultModPunishment !== '';
+      case 5:
         return (
           formData.teamLimit.length > 0 && 
           formData.betterPvpAllowed.length > 0 && 
           formData.multiAccountAllowed.length > 0
         );
-      case 5:
+      case 6:
         return (
           formData.expectations.trim() !== '' && 
           formData.duties.trim() !== '' && 
@@ -164,6 +194,8 @@ const App: React.FC = () => {
       let errorMsg = "Пожалуйста, ответьте на все вопросы на текущем шаге.";
       if (currentStep === 2 && formData.activeTime.length < 11 && formData.activeTime.length > 0) {
         errorMsg = "Неверный формат времени. Используйте ЧЧ:ММ-ЧЧ:ММ";
+      } else if (currentStep === 3) {
+        errorMsg = "Вы должны полностью распределить все нарушения!";
       }
       setModal({ isOpen: true, title: "Внимание", message: errorMsg });
     }
@@ -201,7 +233,9 @@ const App: React.FC = () => {
     
     if (success) {
       playSfx('success');
+      setShowAchievement(true);
       localStorage.setItem('nullx_last_submission', Date.now().toString()); // Set Rate Limit
+      localStorage.removeItem(DRAFT_KEY); // Clear Draft
       setIsSubmitted(true);
     } else {
       playSfx('error');
@@ -212,12 +246,12 @@ const App: React.FC = () => {
 
   const handleReset = () => {
     playSfx('click');
-    // Don't reset localStorage here, as rate limit persists
     setFormData(initialFormState);
     setCurrentStep(1);
     setIsCaptchaVerified(false);
     setIsSubmitted(false);
     setCaptchaAttempts(0);
+    setShowAchievement(false);
     startTimeRef.current = Date.now();
     quizStartTimeRef.current = 0;
     setQuizTimeElapsed(0);
@@ -229,6 +263,7 @@ const App: React.FC = () => {
   if (view === 'blocked') {
      return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505] overlay-animate-show relative overflow-hidden">
+        <CustomCursor />
         <ParticleBackground />
         <div className="max-w-md w-full bg-[#0a0a0a] border border-red-900/50 rounded-2xl p-10 text-center shadow-[0_0_60px_rgba(255,0,0,0.15)] z-10">
           <div className="w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -251,16 +286,15 @@ const App: React.FC = () => {
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505] overlay-animate-show relative overflow-hidden">
+        <CustomCursor />
+        <AchievementToast show={showAchievement} title="Application Sent!" description="Ваша заявка успешно отправлена" />
         <ParticleBackground />
         <div className="max-w-md w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl p-10 text-center shadow-[0_0_60px_rgba(176,0,255,0.25)] modal-animate-show relative overflow-hidden z-10">
-          {/* Decorative light effect */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-[#6200ea] opacity-20 blur-[60px] pointer-events-none"></div>
 
           <div className="relative z-10">
             <div className="relative mx-auto mb-8 w-24 h-24 flex items-center justify-center">
-              {/* Ping effect for impact */}
               <div className="absolute inset-0 bg-[#b000ff] rounded-full animate-ping opacity-20 duration-1000"></div>
-              {/* Main Icon */}
               <div className="relative w-24 h-24 bg-gradient-to-br from-[#6200ea] to-[#b000ff] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(176,0,255,0.5)] animate-success-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -289,6 +323,7 @@ const App: React.FC = () => {
   if (view === 'landing') {
     return (
       <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-start py-10 px-4 overlay-animate-show overflow-hidden relative">
+        <CustomCursor />
         <ParticleBackground />
         
         {/* Gradients */}
@@ -304,7 +339,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="text-center max-w-4xl mb-20 px-4 z-10 flex flex-col items-center">
-          <h1 className="text-7xl md:text-[110px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase flex flex-col items-center text-white">
+          <h1 className="text-7xl md:text-[110px] font-brand font-extrabold tracking-tighter leading-[0.9] mb-4 uppercase flex flex-col items-center text-white cursor-none">
             <span>Null<span className="text-[#b000ff] ml-3">X</span></span>
             <span className="text-3xl md:text-[40px] text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] mt-4 font-bold tracking-[0.4em] border-b-2 border-[#b000ff]/30 pb-2">STAFF TEAM</span>
           </h1>
@@ -315,7 +350,7 @@ const App: React.FC = () => {
           
           <button 
             onClick={() => { playSfx('click'); setView('form'); }}
-            className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)]"
+            className="group relative inline-flex items-center justify-center px-20 py-7 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-2xl text-white font-bold uppercase tracking-[0.2em] text-lg md:text-xl transition-all active:scale-95 shadow-[0_20px_60px_rgba(176,0,255,0.4)] hover:shadow-[0_25px_80px_rgba(176,0,255,0.6)] cursor-none"
           >
             Подать заявку
           </button>
@@ -371,6 +406,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen py-12 px-4 md:px-6 relative overflow-hidden flex flex-col items-center bg-[#050505] overlay-animate-show">
+      <CustomCursor />
       <CustomModal isOpen={modal.isOpen} onClose={() => setModal({ ...modal, isOpen: false })} title={modal.title} message={modal.message} />
       
       {/* Backgrounds */}
@@ -390,7 +426,7 @@ const App: React.FC = () => {
             <span className="text-[10px] uppercase font-bold tracking-widest">Вернуться на главную</span>
           </button>
 
-          <h1 className="text-6xl md:text-7xl font-brand font-extrabold tracking-tighter mb-2 select-none uppercase text-white">
+          <h1 className="text-6xl md:text-7xl font-brand font-extrabold tracking-tighter mb-2 select-none uppercase text-white cursor-none">
             Null<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6200ea] to-[#b000ff] ml-3">X</span>
           </h1>
           <div className="flex items-center justify-center gap-3 opacity-60">
@@ -403,7 +439,7 @@ const App: React.FC = () => {
         <ProgressBar currentStep={currentStep} totalSteps={totalSteps} />
 
         {/* Quiz Timer Display */}
-        {(currentStep === 3 || currentStep === 4) && (
+        {(currentStep === 4 || currentStep === 5) && (
           <div className="fixed top-4 right-4 md:absolute md:top-0 md:right-[-80px] z-50 animate-in fade-in duration-500">
             <div className="bg-[#0a0a0a] border border-[#b000ff]/30 rounded-lg p-3 text-center shadow-lg">
               <div className="text-[9px] uppercase tracking-widest text-gray-500 font-bold mb-1">Таймер</div>
@@ -478,6 +514,17 @@ const App: React.FC = () => {
           )}
 
           {currentStep === 3 && (
+             <div className="animate-in slide-in-from-right-8 duration-500">
+               <SectionWrapper title="Проверка Знаний" icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>}>
+                 <PunishmentSorter 
+                   playSfx={playSfx}
+                   onPass={() => setFormData(prev => ({ ...prev, punishmentTestPassed: true }))}
+                 />
+               </SectionWrapper>
+             </div>
+          )}
+
+          {currentStep === 4 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-4">
               <QuizField 
                 question="Какое наказание за фразы 'ez', 'bezdar', 'slabak'?"
@@ -511,7 +558,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-4">
                <QuizField 
                 question="Максимальное кол-во человек в команде?"
@@ -544,7 +591,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {currentStep === 5 && (
+          {currentStep === 6 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-4">
               <SectionWrapper title="Завершение">
                 <div className="space-y-6">
@@ -588,7 +635,7 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-4 bg-[#111] border border-[#1f1f1f] rounded-xl text-gray-400 font-extrabold uppercase tracking-widest text-[10px] hover:bg-[#1a1a1a] hover:text-white transition-all active:scale-95 shadow-lg"
+                className="flex-1 py-4 bg-[#111] border border-[#1f1f1f] rounded-xl text-gray-400 font-extrabold uppercase tracking-widest text-[10px] hover:bg-[#1a1a1a] hover:text-white transition-all active:scale-95 shadow-lg cursor-none"
               >
                 Назад
               </button>
@@ -598,7 +645,7 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-[2] py-4 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] hover:brightness-110 shadow-[0_10px_30px_rgba(176,0,255,0.3)] transition-all active:scale-95"
+                className="flex-[2] py-4 bg-gradient-to-r from-[#6200ea] to-[#b000ff] rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] hover:brightness-110 shadow-[0_10px_30px_rgba(176,0,255,0.3)] transition-all active:scale-95 cursor-none"
               >
                 Далее
               </button>
@@ -606,7 +653,7 @@ const App: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || !isCaptchaVerified}
-                className={`flex-[2] py-4 rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg ${
+                className={`flex-[2] py-4 rounded-xl text-white font-extrabold uppercase tracking-widest text-[10px] transition-all active:scale-95 shadow-lg cursor-none ${
                   isSubmitting || !isCaptchaVerified 
                   ? 'bg-gray-800 opacity-50 cursor-not-allowed border border-gray-700' 
                   : 'bg-gradient-to-r from-[#6200ea] to-[#b000ff] hover:brightness-110 shadow-[0_0_30px_rgba(176,0,255,0.45)]'

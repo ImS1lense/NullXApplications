@@ -41,6 +41,13 @@
             font-family: 'Unbounded', sans-serif !important;
         }
 
+        /* Hide default cursor on desktop to let CustomCursor shine */
+        @media (pointer: fine) {
+            body, a, button, input, textarea, select, label, .cursor-pointer {
+                cursor: none !important;
+            }
+        }
+
         .glow-purple:focus {
             box-shadow: 0 0 15px rgba(176, 0, 255, 0.4);
         }
