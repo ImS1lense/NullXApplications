@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-nullx-minecraft-trainee-application",
+  "name": "nullx-staff-panel",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.4",
-    "@google/genai": "^1.39.0",
-    "react": "^19.2.4"
+    "react": "^19.2.4",
+    "lucide-react": "^0.563.0",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
